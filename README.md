@@ -1,12 +1,10 @@
 ## About
 
-This is a project to create an API for frontends that can use AI to detect if a crop is diseased or not.
+This project is a small **HTTP API** for frontends that use AI to estimate whether a crop image shows disease (or related labels), depending on the model you configure.
 
-The server is a **FastAPI** app (`main.py`) that can **store uploaded images** and **run image classification** using Hugging Face [Transformers pipelines](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default model is a general ImageNet classifier; for real crop-disease use, point `HF_IMAGE_CLASSIFICATION_MODEL` at a **fine-tuned** checkpoint such as (LishaV01/agriculture-crop-disease-detection) whose labels match your problem.
+The server is a **FastAPI** app in `main.py`. It can **store uploaded images** and **run image classification** with a Hugging Face [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default checkpoint is a general ImageNet-style classifier (`microsoft/resnet-50`). For crop disease work, set `HF_IMAGE_CLASSIFICATION_MODEL` to a **fine-tuned** model whose labels match your use case (for example [`LishaV01/agriculture-crop-disease-detection`](https://huggingface.co/LishaV01/agriculture-crop-disease-detection)).
 
 ## Architecture
-
-The current tech stack is:
 
 **Languages**
 
@@ -15,83 +13,92 @@ The current tech stack is:
 **Backend**
 
 - FastAPI (HTTP API, automatic OpenAPI docs)
-- [Transformers](https://huggingface.co/docs/transformers) `image-classification` pipeline (PyTorch + `torch`)
+- Transformers `image-classification` pipeline (PyTorch via `torch`)
 - Pillow for decoding uploaded image bytes
-- `python-dotenv` to load a local `.env` into the process environment
+- `python-dotenv` to merge a local `.env` into the process environment (without overriding variables already set in the shell)
 
 **Deployment**
 
-- Railway
+- Railway (or any host that can run a Python ASGI app)
 
 ## How it works
 
-### Startup (`lifespan`)
+### Startup (lifespan)
 
-When the process starts, FastAPI runs a **lifespan** context once:
+On startup, FastAPI runs a **lifespan** context once:
 
-1. Read `HF_IMAGE_CLASSIFICATION_MODEL` from the environment (see below). If unset, it defaults to `microsoft/resnet-50`.
-2. Build a single **`pipeline("image-classification", ...)`** and store it on **`app.state.classifier`**.
-3. All `/classify` requests reuse that pipeline so the weights are not reloaded per request.
+1. Read `HF_IMAGE_CLASSIFICATION_MODEL` from the environment. If unset, it defaults to `microsoft/resnet-50`.
+2. Construct a single `pipeline("image-classification", model=..., device=...)` and attach it to **`app.state.classifier`**.
+3. `/classify` reuses that pipeline so weights are not reloaded per request.
 
-The first run may **download** the model from the Hugging Face Hub; later runs use the cache.
+The first run may **download** weights from the Hugging Face Hub; later runs use the local cache.
+
+### Hugging Face tokenizers
+
+Before importing Transformers, `main.py` sets `TOKENIZERS_PARALLELISM` to `false` by default (via `os.environ.setdefault`), which avoids extra tokenizer multiprocessing. You can override it in the environment if you need different behavior.
 
 ### Configuration (`.env`)
 
-Variables are read from **`os.environ`**. A `.env` file next to `main.py` is loaded at import time via `load_dotenv` (values in `.env` do not override variables already set in the shell).
+Values are read from **`os.environ`**. The `.env` file beside `main.py` is loaded at import time with `load_dotenv` (entries in `.env` do **not** override variables already exported in your shell).
 
-| Variable                        | Purpose                                                                                                                             |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `HF_IMAGE_CLASSIFICATION_MODEL` | Hugging Face model id for `image-classification` (default: `microsoft/resnet-50`).                                                  |
-| `HF_DEVICE`                     | Device passed to the pipeline (`cpu`, `mps`, `cuda:0`, `0` for GPU index, `-1` for CPU legacy style, etc.). Default in code: `cpu`. |
-| `HF_TOKEN`                      | Compulsory. Hub token for private or gated models (Transformers reads this from the environment).                                   |
+| Variable                        | Purpose                                                                                                                                                             |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HF_IMAGE_CLASSIFICATION_MODEL` | Hugging Face model id for `image-classification` (default: `microsoft/resnet-50`).                                                                                  |
+| `HF_DEVICE`                     | Device for the pipeline: `cpu`, `mps`, `cuda:0`, a numeric GPU index (`0`, `1`, …), or `-1` / empty for CPU in Hugging Face’s legacy style. Default in code: `cpu`. |
+| `HF_TOKEN`                      | **Optional** for public models. Use a Hub token for **private** or **gated** models (Transformers / Hub clients read this from the environment).                    |
+| `TOKENIZERS_PARALLELISM`        | Optional override for tokenizer thread/process behavior (see above).                                                                                                |
 
 ### Endpoints
 
-Interactive docs: **`http://127.0.0.1:8000/docs`** (when running locally).
+Interactive docs: **`http://127.0.0.1:8000/docs`** when running locally on the default port.
 
 #### `POST /upload`
 
-Accepts **multipart form-data** with one or more parts named **`files`**.
-
-- Saves each file under **`uploads/`** (directory is created if missing).
-- Response: `{"filenames": ["...", "..."]}`.
+- **Body:** `multipart/form-data` with one or more parts named **`files`**.
+- Saves each file under **`uploads/`** (created if missing).
+- **Response:** `{"filenames": ["...", "..."]}`.
 - Duplicate basenames overwrite earlier files in `uploads/`.
 
 #### `POST /classify`
 
-Accepts the same **`files`** multipart field. Optional query parameter **`top_k`** (integer, **1–20**, default **5**): number of top labels/scores per image.
+- **Body:** same **`files`** field as `/upload`.
+- **Query:** optional **`top_k`** (integer, **1–20**, default **5**): how many top labels/scores to return per image.
 
-For each file:
+For each file the handler reads bytes, decodes with Pillow as **RGB**, runs the classifier in a **thread pool** (`asyncio.to_thread`) so inference does not block the event loop, and appends `{"filename": "...", "predictions": [...]}`.
 
-1. Read bytes asynchronously.
-2. Decode with Pillow and convert to **RGB**.
-3. Run the classifier in a **thread pool** (`asyncio.to_thread`) so slow inference does not block the async event loop.
-4. Append `{"filename": "...", "predictions": [...]}` to the response list.
+**Response:** `{"results": [...]}`. Each `predictions` entry is typically a list of objects with **`label`** and **`score`** (exact fields depend on the model).
 
-Response shape: `{"results": [...]}`. Each `predictions` entry is typically a list of objects with **`label`** and **`score`** (exact shape depends on the model).
+Invalid or non-image input returns **400** with a short message.
 
-Invalid or non-image data returns **400** with a short message.
+### Calling from HTTP clients
 
-### Calling from Postman or clients
-
-- **URL:** `http://127.0.0.1:8000/classify` (single slash before `classify`; a typo like `//classify` returns **404**).
+- **URL:** `http://127.0.0.1:8000/classify` (single slash before `classify`; `//classify` is a different path and returns **404**).
 - **Body:** `form-data`, key **`files`**, type **File** (repeat the key for multiple images).
 - **Query (optional):** `top_k=5`.
 
 ## Running locally
 
-From the project root (with [uv](https://github.com/astral-sh/uv)):
+Install dependencies with [uv](https://github.com/astral-sh/uv):
 
 ```bash
 uv sync
+```
+
+### Development (auto-reload)
+
+```bash
 uv run fastapi dev
 ```
 
-The dev server prints the local URL (usually `http://127.0.0.1:8000`).
+### Production-style (no reload)
+
+```bash
+uv run fastapi run
+```
 
 ## Project layout (essentials)
 
 - `main.py` — FastAPI app, lifespan, `/upload`, `/classify`.
-- `.env` — local secrets and model/device overrides (not committed; keep it gitignored).
-- `uploads/` — default directory for saved uploads (created on demand).
+- `.env` — local secrets and model/device overrides (gitignored; not committed).
+- `uploads/` — saved files from `/upload` (created on demand).
 - `pyproject.toml` / `uv.lock` — dependencies and lockfile.
