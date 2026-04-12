@@ -5,6 +5,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
 
+# HF tokenizers: avoid extra multiprocessing (fork-safety / parallelism warnings).
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from PIL import Image, UnidentifiedImageError
@@ -47,6 +50,7 @@ async def lifespan(app: FastAPI):
         device=_pipeline_device(),
     )
     yield
+    del app.state.classifier
 
 
 app = FastAPI(lifespan=lifespan)
