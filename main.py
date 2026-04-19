@@ -9,7 +9,7 @@ from typing import List
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from PIL import Image, UnidentifiedImageError
 from transformers import pipeline
 
@@ -54,24 +54,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-UPLOAD_DIR = Path("uploads")
-
-
-@app.post("/upload")
-async def upload_image(files: List[UploadFile] = File()):
-    if not files:
-        raise HTTPException(status_code=400, detail="No files uploaded")
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    saved: list[str] = []
-    for file in files:
-        contents = await file.read()
-        name = Path(file.filename or "upload.bin").name
-        dest = UPLOAD_DIR / name
-        with dest.open("wb") as f:
-            f.write(contents)
-        saved.append(name)
-    return {"filenames": saved}
-
 
 @app.post("/classify")
 async def classify_images(

@@ -2,7 +2,7 @@
 
 This project is a small **HTTP API** for frontends that use AI to estimate whether a crop image shows disease, depending on the model you configure.
 
-The server is a **FastAPI** app in `main.py`. It can **store uploaded images** and **run image classification** with a Hugging Face [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default checkpoint is a general ImageNet-style classifier (`microsoft/resnet-50`). For crop disease work, set `HF_IMAGE_CLASSIFICATION_MODEL` to a **fine-tuned** model whose labels match your use case (for example [`LishaV01/agriculture-crop-disease-detection`](https://huggingface.co/LishaV01/agriculture-crop-disease-detection)).
+The server is a **FastAPI** app in `main.py`. It **runs image classification** with a Hugging Face [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default checkpoint is a general ImageNet-style classifier (`microsoft/resnet-50`). For crop disease work, set `HF_IMAGE_CLASSIFICATION_MODEL` to a **fine-tuned** model whose labels match your use case (for example [`LishaV01/agriculture-crop-disease-detection`](https://huggingface.co/LishaV01/agriculture-crop-disease-detection)).
 
 ## Architecture
 
@@ -52,13 +52,6 @@ Values are read from **`os.environ`**. The `.env` file beside `main.py` is loade
 
 Interactive docs: **`http://127.0.0.1:8000/docs`** when running locally on the default port.
 
-#### `POST /upload`
-
-- **Body:** `multipart/form-data` with one or more parts named **`files`**.
-- Saves each file under **`uploads/`** (created if missing).
-- **Response:** `{"filenames": ["...", "..."]}`.
-- Duplicate basenames overwrite earlier files in `uploads/`.
-
 #### `POST /classify`
 
 - **Body:** same **`files`** field as `/upload`.
@@ -72,7 +65,7 @@ Invalid or non-image input returns **400** with a short message.
 
 ### Calling from HTTP clients
 
-- **URL:** `http://127.0.0.1:8000/classify` (single slash before `classify`; `//classify` is a different path and returns **404**).
+- **URL:** `http://127.0.0.1:8000/classify`.
 - **Body:** `form-data`, key **`files`**, type **File** (repeat the key for multiple images).
 - **Query (optional):** `top_k=5`.
 
@@ -98,7 +91,6 @@ uv run fastapi run
 
 ## Project layout (essentials)
 
-- `main.py` — FastAPI app, lifespan, `/upload`, `/classify`.
+- `main.py` — FastAPI app, lifespan, `/classify`.
 - `.env` — local secrets and model/device overrides (gitignored; not committed).
-- `uploads/` — saved files from `/upload` (created on demand).
 - `pyproject.toml` / `uv.lock` — dependencies and lockfile.
