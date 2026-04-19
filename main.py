@@ -54,12 +54,17 @@ async def lifespan(app: FastAPI):
     del app.state.classifier
 
 
+SUPPORTED_CROPS = frozenset({"corn", "potato", "rice", "wheat"})
+
 app = FastAPI(lifespan=lifespan)
+
+_allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173")
+ALLOWED_ORIGINS = [origin.strip() for origin in _allowed_origins.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_methods=["POST"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -94,5 +99,11 @@ async def classify_images(
             image,
             top_k=top_k,
         )
-        results.append({"filename": name, "predictions": predictions})
+
+        cropInImage = next(
+            (c for c in SUPPORTED_CROPS if c.lower() in name.lower()), None
+        )
+        results.append(
+            {"filename": name, "cropInImage": cropInImage, "predictions": predictions}
+        )
     return {"results": results}

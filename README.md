@@ -2,7 +2,7 @@
 
 This project is a small **HTTP API** for frontends that use AI to estimate whether a crop image shows disease, depending on the model you configure.
 
-The server is a **FastAPI** app in `main.py`. It **runs image classification** with a Hugging Face [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default checkpoint is a general ImageNet-style classifier (`microsoft/resnet-50`). For crop disease work, set `HF_IMAGE_CLASSIFICATION_MODEL` to a **fine-tuned** model whose labels match your use case (for example [`LishaV01/agriculture-crop-disease-detection`](https://huggingface.co/LishaV01/agriculture-crop-disease-detection)).
+The server is a **FastAPI** app in `main.py`. It **runs image classification** with a Hugging Face [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default checkpoint is a general ImageNet-style classifier (`microsoft/resnet-50`). For crop disease work, set `HF_IMAGE_CLASSIFICATION_MODEL` to a **fine-tuned** model whose labels match your use case (for example [`wambugu71/crop_leaf_diseases_vit`](https://huggingface.co/wambugu71/crop_leaf_diseases_vit)).
 
 ## Architecture
 
@@ -47,6 +47,7 @@ Values are read from **`os.environ`**. The `.env` file beside `main.py` is loade
 | `HF_DEVICE`                     | Device for the pipeline: `cpu`, `mps`, `cuda:0`, a numeric GPU index (`0`, `1`, …), or `-1` / empty for CPU in Hugging Face’s legacy style. Default in code: `cpu`. |
 | `HF_TOKEN`                      | **Optional** for public models. Use a Hub token for **private** or **gated** models (Transformers / Hub clients read this from the environment).                    |
 | `TOKENIZERS_PARALLELISM`        | Optional override for tokenizer thread/process behavior (see above).                                                                                                |
+| `ALLOWED_ORIGINS`               | Comma-separated list of allowed CORS origins (default: `http://localhost:5173`). Example: `https://myapp.com,https://www.myapp.com`.                                |
 
 ### Endpoints
 
