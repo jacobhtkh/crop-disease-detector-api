@@ -11,7 +11,11 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from transformers import pipeline
 
 # Merge key/value pairs from .env into os.environ so os.getenv reads them (does not override existing vars).
@@ -56,7 +60,20 @@ async def lifespan(app: FastAPI):
 
 SUPPORTED_CROPS = frozenset({"corn", "potato", "rice", "wheat"})
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(lifespan=lifespan)
+app.state.limiter = limiter
+
+
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"error": "Rate limit exceeded", "limit": str(exc.limit.limit)},  # type: ignore
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173")
 ALLOWED_ORIGINS = [origin.strip() for origin in _allowed_origins.split(",")]
@@ -70,6 +87,7 @@ app.add_middleware(
 
 
 @app.post("/classify")
+@limiter.limit("20/minute")
 async def classify_images(
     request: Request,
     files: List[UploadFile] = File(),
