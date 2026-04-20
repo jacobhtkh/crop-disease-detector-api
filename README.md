@@ -16,6 +16,7 @@ The server is a **FastAPI** app in `main.py`. It **runs image classification** w
 - Transformers `image-classification` pipeline (PyTorch via `torch`)
 - Pillow for decoding uploaded image bytes
 - `python-dotenv` to merge a local `.env` into the process environment (without overriding variables already set in the shell)
+- `slowapi` for per-IP rate limiting (20 requests/minute)
 
 **Deployment**
 
@@ -55,12 +56,27 @@ Interactive docs: **`http://127.0.0.1:8000/docs`** when running locally on the d
 
 #### `POST /classify`
 
-- **Body:** same **`files`** field as `/upload`.
+- **Body:** `multipart/form-data` with one or more parts named **`files`**.
 - **Query:** optional **`top_k`** (integer, **1–20**, default **5**): how many top labels/scores to return per image.
 
-For each file the handler reads bytes, decodes with Pillow as **RGB**, runs the classifier in a **thread pool** (`asyncio.to_thread`) so inference does not block the event loop, and appends `{"filename": "...", "predictions": [...]}`.
+For each file the handler reads bytes, decodes with Pillow as **RGB**, runs the classifier in a **thread pool** (`asyncio.to_thread`) so inference does not block the event loop, and appends the result.
 
-**Response:** `{"results": [...]}`. Each `predictions` entry is typically a list of objects with **`label`** and **`score`** (exact fields depend on the model).
+**Response:**
+```json
+{
+  "results": [
+    {
+      "filename": "corn_leaf.jpg",
+      "cropInImage": "corn",
+      "predictions": [
+        { "label": "Corn___Common_Rust", "score": 0.91 }
+      ]
+    }
+  ]
+}
+```
+
+`cropInImage` is the detected crop name from the filename, or `null` if none matched. Predictions are filtered to only include labels matching the detected crop.
 
 Invalid or non-image input returns **400** with a short message.
 
