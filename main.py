@@ -3,7 +3,6 @@ import io
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import List
 
 # HF tokenizers: avoid extra multiprocessing (fork-safety / parallelism warnings).
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -13,6 +12,7 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
+from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -60,6 +60,22 @@ async def lifespan(app: FastAPI):
 
 SUPPORTED_CROPS = frozenset({"corn", "potato", "rice", "wheat"})
 
+
+class Prediction(BaseModel):
+    label: str
+    score: float
+
+
+class ImageResult(BaseModel):
+    filename: str
+    cropInImage: str | None
+    predictions: list[Prediction]
+
+
+class ClassifyResponse(BaseModel):
+    results: list[ImageResult]
+
+
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(lifespan=lifespan)
@@ -86,11 +102,11 @@ app.add_middleware(
 )
 
 
-@app.post("/classify")
+@app.post("/classify", response_model=ClassifyResponse)
 @limiter.limit("20/minute")
 async def classify_images(
     request: Request,
-    files: List[UploadFile] = File(),
+    files: list[UploadFile] = File(),
     top_k: int = 5,
 ):
     if not files:
@@ -101,7 +117,7 @@ async def classify_images(
             detail="top_k must be between 1 and 20",
         )
     classifier = request.app.state.classifier
-    results: list[dict] = []
+    results: list[ImageResult] = []
     for file in files:
         contents = await file.read()
         name = Path(file.filename or "image.bin").name
@@ -118,14 +134,18 @@ async def classify_images(
             top_k=top_k,
         )
 
-        cropInImage = next(
+        crop_in_image = next(
             (c for c in SUPPORTED_CROPS if c.lower() in name.lower()), None
         )
-        if cropInImage is not None:
+        if crop_in_image is not None:
             predictions = [
-                p for p in predictions if cropInImage.lower() in p["label"].lower()
+                p for p in predictions if crop_in_image.lower() in p["label"].lower()
             ]
         results.append(
-            {"filename": name, "cropInImage": cropInImage, "predictions": predictions}
+            ImageResult(
+                filename=name,
+                cropInImage=crop_in_image,
+                predictions=predictions,
+            )
         )
     return {"results": results}
