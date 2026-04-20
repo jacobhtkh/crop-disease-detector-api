@@ -103,6 +103,10 @@ async def classify_images(
         cropInImage = next(
             (c for c in SUPPORTED_CROPS if c.lower() in name.lower()), None
         )
+        if cropInImage is not None:
+            predictions = [
+                p for p in predictions if cropInImage.lower() in p["label"].lower()
+            ]
         results.append(
             {"filename": name, "cropInImage": cropInImage, "predictions": predictions}
         )
