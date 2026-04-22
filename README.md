@@ -132,3 +132,16 @@ uv run fastapi run
 - `main.py` — FastAPI app, lifespan, `/classify`.
 - `.env` — local secrets and model/device overrides (gitignored; not committed).
 - `pyproject.toml` / `uv.lock` — dependencies and lockfile.
+
+## Citation
+
+Hugging Face model used:
+
+```bibtex
+@misc{kinyua2024smartfarming,
+  title={Smart Farming Disease Detection Transformer},
+  author={Wambugu Kinyua},
+  year={2024},
+  publisher={Hugging Face},
+}
+```
