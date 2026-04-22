@@ -76,6 +76,32 @@ Values are read from **`os.environ`**. The `.env` file beside `main.py` is loade
 
 Interactive docs: **`http://127.0.0.1:8000/docs`** when running locally on the default port.
 
+#### `GET /supported-crops`
+
+Returns the list of supported crops and their conditions, each with a brief description.
+
+**Example Response:**
+
+```json
+{
+  "crops": [
+    {
+      "crop": "Corn",
+      "conditions": [
+        {
+          "name": "Common Rust",
+          "description": "Caused by Puccinia sorghi, producing brick-red pustules on both leaf surfaces. Spores spread northward via wind each summer and are favored by cool, humid conditions."
+        },
+        {
+          "name": "Healthy",
+          "description": "Crop shows no signs of disease or infection."
+        }
+      ]
+    }
+  ]
+}
+```
+
 #### `POST /classify`
 
 - **Body:** `multipart/form-data` with one or more parts named **`files`**.
@@ -144,7 +170,7 @@ uv run pytest
 
 ## Project layout (essentials)
 
-- `main.py` — FastAPI app, lifespan, `/classify`.
+- `main.py` — FastAPI app, lifespan, `/supported-crops`, `/classify`.
 - `.env` — local secrets and model/device overrides (gitignored; not committed).
 - `pyproject.toml` / `uv.lock` — dependencies and lockfile.
 
