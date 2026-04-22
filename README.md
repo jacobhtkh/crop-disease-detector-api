@@ -136,6 +136,12 @@ uv run fastapi dev
 uv run fastapi run
 ```
 
+## Running tests
+
+```bash
+uv run pytest
+```
+
 ## Project layout (essentials)
 
 - `main.py` — FastAPI app, lifespan, `/classify`.
