@@ -230,6 +230,7 @@ uv run pytest
 ## Project layout (essentials)
 
 - `main.py` — FastAPI app, lifespan, `/supported-crops`, `/classify`.
+- `crops.json` — crop and condition data (names and descriptions) served by `/supported-crops`.
 - `.env` — local secrets and model/device overrides (gitignored; not committed).
 - `pyproject.toml` / `uv.lock` — dependencies and lockfile.
 

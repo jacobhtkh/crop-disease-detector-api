@@ -1,5 +1,6 @@
 import asyncio
 import io
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -58,117 +59,11 @@ async def lifespan(app: FastAPI):
     del app.state.classifier
 
 
-CROPS = [
-    {
-        "crop": "Corn",
-        "conditions": [
-            {
-                "name": "Common Rust",
-                "description": (
-                    "Caused by Puccinia sorghi, producing brick-red pustules on both"
-                    " leaf surfaces. Spores spread northward via wind each summer and"
-                    " are favored by cool, humid conditions."
-                ),
-            },
-            {
-                "name": "Gray Leaf Spot",
-                "description": (
-                    "Caused by Cercospora zeae-maydis, producing rectangular"
-                    " gray-brown lesions that run parallel between leaf veins."
-                    " Thrives in warm, humid conditions and overwinters in corn debris."
-                ),
-            },
-            {
-                "name": "Leaf Blight",
-                "description": (
-                    "Northern Leaf Blight, caused by Exserohilum turcicum, produces"
-                    " long elliptical gray-green lesions on leaves that turn tan."
-                    " Severe infections can reduce grain yields by 40–70%."
-                ),
-            },
-            {
-                "name": "Healthy",
-                "description": "Crop shows no signs of disease or infection.",
-            },
-        ],
-    },
-    {
-        "crop": "Potato",
-        "conditions": [
-            {
-                "name": "Early Blight",
-                "description": (
-                    "Caused by Alternaria solani, producing dark circular lesions with"
-                    " a concentric ring (target-like) pattern on older, lower leaves."
-                    " Favored by alternating wet and dry periods."
-                ),
-            },
-            {
-                "name": "Late Blight",
-                "description": (
-                    "Caused by Phytophthora infestans, rapidly spreading dark blotches"
-                    " on leaves and stems that collapse quickly. Historically"
-                    " responsible for the 1845 Irish Potato Famine."
-                ),
-            },
-            {
-                "name": "Healthy",
-                "description": "Crop shows no signs of disease or infection.",
-            },
-        ],
-    },
-    {
-        "crop": "Rice",
-        "conditions": [
-            {
-                "name": "Brown Spot",
-                "description": (
-                    "Caused by Cochliobolus miyabeanus, producing oval brown spots"
-                    " with gray centers on leaves. Common in nutrient-deficient soils;"
-                    " can cause up to 45% yield loss."
-                ),
-            },
-            {
-                "name": "Leaf Blast",
-                "description": (
-                    "Caused by Magnaporthe oryzae, producing spindle-shaped"
-                    " whitish-gray lesions with brown borders on leaves. One of the"
-                    " most destructive rice diseases, responsible for 10–30% global"
-                    " yield loss."
-                ),
-            },
-            {
-                "name": "Healthy",
-                "description": "Crop shows no signs of disease or infection.",
-            },
-        ],
-    },
-    {
-        "crop": "Wheat",
-        "conditions": [
-            {
-                "name": "Brown Rust",
-                "description": (
-                    "Caused by Puccinia triticina, producing small round orange-brown"
-                    " pustules scattered across leaf surfaces. Wind-dispersed; high"
-                    " humidity and mild temperatures favor spread."
-                ),
-            },
-            {
-                "name": "Yellow Rust",
-                "description": (
-                    "Caused by Puccinia striiformis, producing yellow-orange spores"
-                    " arranged in stripes along leaves. A cool-season disease where"
-                    " yield losses can exceed 70% in severe epidemics."
-                ),
-            },
-            {
-                "name": "Healthy",
-                "description": "Crop shows no signs of disease or infection.",
-            },
-        ],
-    },
-]
+CROPS = json.loads(
+    (Path(__file__).resolve().parent / "supported-crops.json").read_text(
+        encoding="utf-8"
+    )
+)
 
 SUPPORTED_CROPS = frozenset(c["crop"].lower() for c in CROPS)
 
