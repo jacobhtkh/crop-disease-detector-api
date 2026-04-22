@@ -4,6 +4,26 @@ This project is a small **HTTP API** for frontends that use AI to estimate wheth
 
 The server is a **FastAPI** app in `main.py`. It **runs image classification** with a Hugging Face [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default checkpoint is a general ImageNet-style classifier (`microsoft/resnet-50`). For crop disease work, set `HF_IMAGE_CLASSIFICATION_MODEL` to a **fine-tuned** model whose labels match your use case (for example [`wambugu71/crop_leaf_diseases_vit`](https://huggingface.co/wambugu71/crop_leaf_diseases_vit)).
 
+### Supported crops and diseases (`wambugu71/crop_leaf_diseases_vit`)
+
+| Crop   | Disease / Label    |
+| ------ | ------------------ |
+| Corn   | Common Rust        |
+| Corn   | Gray Leaf Spot     |
+| Corn   | Healthy            |
+| Corn   | Leaf Blight        |
+| Potato | Early Blight       |
+| Potato | Healthy            |
+| Potato | Late Blight        |
+| Rice   | Brown Spot         |
+| Rice   | Healthy            |
+| Rice   | Leaf Blast         |
+| Wheat  | Brown Rust         |
+| Wheat  | Healthy            |
+| Wheat  | Yellow Rust        |
+
+Images that do not match a supported crop return an `Invalid` label.
+
 ## Architecture
 
 **Languages**
