@@ -2,25 +2,27 @@
 
 This project is a small **HTTP API** for frontends that use AI to estimate whether a crop image shows disease, depending on the model you configure.
 
-The server is a **FastAPI** app in `main.py`. It **runs image classification** with a Hugging Face [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The default checkpoint is a general ImageNet-style classifier (`microsoft/resnet-50`). For crop disease work, set `HF_IMAGE_CLASSIFICATION_MODEL` to a **fine-tuned** model whose labels match your use case (for example [`wambugu71/crop_leaf_diseases_vit`](https://huggingface.co/wambugu71/crop_leaf_diseases_vit)).
+The server is a **FastAPI** app in `main.py`. It uses a Hugging Face model for image classification, loaded via the [Transformers](https://huggingface.co/docs/transformers) [`image-classification` pipeline](https://huggingface.co/docs/transformers/main_classes/pipelines#transformers.ImageClassificationPipeline). The model is controlled by the `HF_IMAGE_CLASSIFICATION_MODEL` environment variable. If that variable is not set, the API falls back to `microsoft/resnet-50` (a general ImageNet classifier). For this crop disease classification the hugging face model used is [`wambugu71/crop_leaf_diseases_vit`](https://huggingface.co/wambugu71/crop_leaf_diseases_vit).
 
-### Supported crops and diseases (`wambugu71/crop_leaf_diseases_vit`)
+### Supported crops and diseases
 
-| Crop   | Disease / Label    |
-| ------ | ------------------ |
-| Corn   | Common Rust        |
-| Corn   | Gray Leaf Spot     |
-| Corn   | Healthy            |
-| Corn   | Leaf Blight        |
-| Potato | Early Blight       |
-| Potato | Healthy            |
-| Potato | Late Blight        |
-| Rice   | Brown Spot         |
-| Rice   | Healthy            |
-| Rice   | Leaf Blast         |
-| Wheat  | Brown Rust         |
-| Wheat  | Healthy            |
-| Wheat  | Yellow Rust        |
+| Crop   | Disease / Label |
+| ------ | --------------- |
+| Corn   | Common Rust     |
+| Corn   | Gray Leaf Spot  |
+| Corn   | Healthy         |
+| Corn   | Leaf Blight     |
+| Potato | Early Blight    |
+| Potato | Healthy         |
+| Potato | Late Blight     |
+| Rice   | Brown Spot      |
+| Rice   | Healthy         |
+| Rice   | Leaf Blast      |
+| Wheat  | Brown Rust      |
+| Wheat  | Healthy         |
+| Wheat  | Yellow Rust     |
+
+As you can see it's mostly leaf diseases covered.
 
 Images that do not match a supported crop return an `Invalid` label.
 
@@ -82,15 +84,14 @@ Interactive docs: **`http://127.0.0.1:8000/docs`** when running locally on the d
 For each file the handler reads bytes, decodes with Pillow as **RGB**, runs the classifier in a **thread pool** (`asyncio.to_thread`) so inference does not block the event loop, and appends the result.
 
 **Response:**
+
 ```json
 {
   "results": [
     {
       "filename": "corn_leaf.jpg",
       "cropInImage": "corn",
-      "predictions": [
-        { "label": "Corn___Common_Rust", "score": 0.91 }
-      ]
+      "predictions": [{ "label": "Corn___Common_Rust", "score": 0.91 }]
     }
   ]
 }
