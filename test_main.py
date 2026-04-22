@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from main import app
+from main import SUPPORTED_CROPS, app
 
 # Fake classifier output covering multiple crops
 MOCK_PREDICTIONS = [
@@ -29,6 +29,42 @@ def client():
     with patch("main.pipeline", return_value=mock_classifier):
         with TestClient(app) as c:
             yield c
+
+
+# ---------------------------------------------------------------------------
+# GET /supported-crops
+# ---------------------------------------------------------------------------
+
+
+def test_supported_crops_returns_200(client):
+    response = client.get("/supported-crops")
+    assert response.status_code == 200
+
+
+def test_supported_crops_response_shape(client):
+    body = client.get("/supported-crops").json()
+    assert "crops" in body
+    for crop in body["crops"]:
+        assert "crop" in crop
+        assert "conditions" in crop
+        for condition in crop["conditions"]:
+            assert "name" in condition
+            assert "description" in condition
+
+
+def test_supported_crops_contains_expected_crops(client):
+    body = client.get("/supported-crops").json()
+    crop_names = {c["crop"].lower() for c in body["crops"]}
+    assert crop_names == SUPPORTED_CROPS
+
+
+def test_supported_crops_conditions_are_non_empty(client):
+    body = client.get("/supported-crops").json()
+    for crop in body["crops"]:
+        assert len(crop["conditions"]) > 0
+        for condition in crop["conditions"]:
+            assert condition["name"]
+            assert condition["description"]
 
 
 # ---------------------------------------------------------------------------
