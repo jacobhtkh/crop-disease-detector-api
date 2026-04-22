@@ -83,15 +83,24 @@ Interactive docs: **`http://127.0.0.1:8000/docs`** when running locally on the d
 
 For each file the handler reads bytes, decodes with Pillow as **RGB**, runs the classifier in a **thread pool** (`asyncio.to_thread`) so inference does not block the event loop, and appends the result.
 
-**Response:**
+**Example Response:**
 
 ```json
 {
   "results": [
     {
-      "filename": "corn_leaf.jpg",
-      "cropInImage": "corn",
-      "predictions": [{ "label": "Corn___Common_Rust", "score": 0.91 }]
+      "filename": "green-wheat.jpeg",
+      "cropInImage": "wheat",
+      "predictions": [
+        {
+          "label": "Wheat___Healthy",
+          "score": 0.9750185012817383
+        },
+        {
+          "label": "Wheat___Yellow_Rust",
+          "score": 0.005910073406994343
+        }
+      ]
     }
   ]
 }
