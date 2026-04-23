@@ -179,7 +179,7 @@ async def classify_images(
         results.append(
             ImageResult(
                 filename=name,
-                cropInImage=crop_in_image,
+                cropInImage=crop_in_image or "Name of crop in image not found",
                 predictions=predictions,
             )
         )
