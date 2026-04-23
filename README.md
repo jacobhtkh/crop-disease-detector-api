@@ -165,9 +165,10 @@ Returns the list of supported crops and their conditions, each with a brief desc
 #### `POST /classify`
 
 - **Body:** `multipart/form-data` with one or more parts named **`files`**.
+- **Body (optional):** `selected_crop_names_for_images` — a repeated form field, one value per image, explicitly naming the crop (e.g. `corn`, `wheat`). When provided and the crop is supported, it takes precedence over filename-based detection.
 - **Query:** optional **`top_k`** (integer, **1–20**, default **5**): how many top labels/scores to return per image.
 
-For each file the handler reads bytes, decodes with Pillow as **RGB**, runs the classifier in a **thread pool** (`asyncio.to_thread`) so inference does not block the event loop, and appends the result.
+For each file the handler reads bytes, decodes with Pillow as **RGB**, runs the classifier in a **thread pool** (`asyncio.to_thread`) so inference does not block the event loop, and appends the result. The crop used to filter predictions is resolved in order: explicit `selected_crop_names_for_images` value → crop name found in the filename → `null` (no filtering).
 
 **Example Response:**
 
@@ -200,6 +201,7 @@ Invalid or non-image input returns **400** with a short message.
 
 - **URL:** `http://127.0.0.1:8000/classify`.
 - **Body:** `form-data`, key **`files`**, type **File** (repeat the key for multiple images).
+- **Body (optional):** `form-data`, key **`selected_crop_names_for_images`**, type **Text** (repeat once per image in the same order as `files`).
 - **Query (optional):** `top_k=5`.
 
 ## Running locally
@@ -231,7 +233,8 @@ uv run pytest
 ## Project layout (essentials)
 
 - `main.py` — FastAPI app, lifespan, `/supported-crops`, `/classify`.
-- `crops.json` — crop and condition data (names and descriptions) served by `/supported-crops`.
+- `supported-crops.json` — crop and condition data (names and descriptions) served by `/supported-crops`.
+- `railway.toml` — Railway deployment config (start command with `$PORT` binding).
 - `.env` — local secrets and model/device overrides (gitignored; not committed).
 - `pyproject.toml` / `uv.lock` — dependencies and lockfile.
 
