@@ -43,6 +43,7 @@ Images that do not match a supported crop return an `Invalid` label.
 **Deployment**
 
 - Railway (or any host that can run a Python ASGI app)
+- Deployed at: https://crop-disease-detector-api-production.up.railway.app
 
 ## How it works
 
