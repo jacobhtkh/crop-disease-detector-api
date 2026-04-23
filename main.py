@@ -9,7 +9,7 @@ from pathlib import Path
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image, UnidentifiedImageError
@@ -134,6 +134,7 @@ async def classify_images(
     request: Request,
     files: list[UploadFile] = File(),
     top_k: int = 5,
+    selected_crop_names_for_images: list[str] = Form(default=[]),
 ):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
@@ -144,7 +145,7 @@ async def classify_images(
         )
     classifier = request.app.state.classifier
     results: list[ImageResult] = []
-    for file in files:
+    for i, file in enumerate(files):
         contents = await file.read()
         name = Path(file.filename or "image.bin").name
         try:
@@ -160,9 +161,17 @@ async def classify_images(
             top_k=top_k,
         )
 
-        crop_in_image = next(
-            (c for c in SUPPORTED_CROPS if c.lower() in name.lower()), None
+        requested_crop = (
+            selected_crop_names_for_images[i].strip().lower()
+            if i < len(selected_crop_names_for_images)
+            else ""
         )
+        if requested_crop and requested_crop in SUPPORTED_CROPS:
+            crop_in_image = requested_crop
+        else:
+            crop_in_image = next(
+                (c for c in SUPPORTED_CROPS if c.lower() in name.lower()), None
+            )
         if crop_in_image is not None:
             predictions = [
                 p for p in predictions if crop_in_image.lower() in p["label"].lower()
